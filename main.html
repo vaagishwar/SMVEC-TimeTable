@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Timetable</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+        :root {
+            --bg: #f4f4f0;
+            --panel: #ffffff;
+            --text: #171717;
+            --muted: #515151;
+            --border: #e1e1e1;
+            --shadow: 0 14px 30px rgba(20, 20, 20, 0.08);
+            --shadow2: 0 10px 24px rgba(20, 20, 20, 0.06);
+            --blue: #1e4bd8;
+            --red: #ff4b4b;
+            --pause: #f4f4f4;
+        }
+
+        html[data-theme="dark"] {
+            --bg: #0f1114;
+            --panel: #161a20;
+            --text: #f3f3f4;
+            --muted: #a7aab0;
+            --border: #2b3038;
+            --shadow: 0 18px 46px rgba(0, 0, 0, 0.45);
+            --shadow2: 0 12px 34px rgba(0, 0, 0, 0.35);
+            --blue: #4d7cff;
+            --red: #ff5a5a;
+            --pause: #13171e;
+        }
+
+        html.theme-anim body {
+            transition: background 0.4s ease, color 0.4s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            font-family: "Space Grotesk", system-ui, sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 18px 12px;
+        }
+
+        .app {
+            width: min(1200px, 100%);
+            padding: 0;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 12px 14px 18px;
+            border-radius: 14px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+            animation: rise 0.6s ease;
+            position: relative;
+        }
+
+        .header-stack {
+            display: grid;
+            justify-items: center;
+            gap: 4px;
+            text-align: center;
+        }
+
+        .clock {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        #status {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .subline {
+            margin-top: 4px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .theme-toggle {
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            border: none;
+            background: transparent;
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .theme-track {
+            width: 56px;
+            height: 30px;
+            border-radius: 999px;
+            background: rgba(120, 120, 120, 0.25);
+            border: 1px solid rgba(120, 120, 120, 0.25);
+            display: flex;
+            align-items: center;
+            padding: 3px;
+            transition: background 0.35s ease, border-color 0.35s ease;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+        }
+
+        html[data-theme="dark"] .theme-track {
+            background: rgba(120, 120, 120, 0.18);
+            border-color: rgba(120, 120, 120, 0.22);
+        }
+
+        .theme-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            background: var(--panel);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+            transform: translateX(0);
+            transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.2, 1), background 0.35s ease;
+        }
+
+        html[data-theme="dark"] .theme-thumb {
+            transform: translateX(26px);
+        }
+
+        .progress-wrap {
+            background: var(--panel);
+            border-radius: 14px;
+            padding: 12px 14px 14px;
+            box-shadow: var(--shadow2);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .progress-track {
+            position: relative;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(120, 120, 120, 0.2);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: var(--blue);
+            transition: width 0.3s ease;
+        }
+
+        .progress-meta {
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            background: var(--panel);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            animation: rise 0.7s ease;
+            scrollbar-gutter: stable;
+        }
+
+        table {
+            width: 100%;
+            min-width: max-content;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 12px 10px;
+            text-align: center;
+            white-space: nowrap;
+            font-size: 14px;
+            transition: background 0.3s ease, transform 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        th {
+            background: rgba(120, 120, 120, 0.14);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        tr th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            background: rgba(120, 120, 120, 0.14);
+        }
+
+        .th-top {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+
+
+        tr.today th {
+            box-shadow: inset 3px 0 0 0 var(--blue);
+        }
+
+        td.pause {
+            background: var(--pause);
+            font-weight: 600;
+        }
+
+        .active {
+            background: rgba(30, 75, 216, 0.14);
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px var(--blue);
+        }
+
+        .active.break {
+            background: rgba(255, 75, 75, 0.14);
+            box-shadow: inset 0 0 0 1px var(--red);
+        }
+
+        td.active::after {
+            content: "";
+            position: absolute;
+            inset: 2px;
+            border-radius: 10px;
+            border: 1px solid var(--blue);
+            opacity: 0.55;
+            animation: activeRing 1.6s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        td.active.break::after {
+            border-color: var(--red);
+        }
+
+        .selected {
+            box-shadow: inset 0 0 0 1px rgba(120, 120, 120, 0.35);
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 999px;
+            background: rgba(120, 120, 120, 0.25);
+            transform: scale(0);
+            animation: ripple 0.55s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes activeRing {
+
+            0%,
+            100% {
+                opacity: 0.55;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.22;
+                transform: scale(0.985);
+            }
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pop {
+            from {
+                transform: scale(0.96);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes splash {
+            0% {
+                transform: scale(0.75);
+                opacity: 0.7;
+            }
+
+            70% {
+                transform: scale(1.1);
+                opacity: 0.15;
+            }
+
+            100% {
+                transform: scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .header {
+                padding-top: 48px;
+            }
+
+            .clock {
+                font-size: 28px;
+            }
+
+            th,
+            td {
+                padding: 8px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="header">
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle theme">
+                <span class="theme-track"><span class="theme-thumb" id="themeThumb"></span></span>
+            </button>
+            <div class="header-stack">
+                <div class="clock" id="clock">--:--</div>
+                <div id="status">Loading</div>
+                <div class="subline" id="periodMeta">--</div>
+            </div>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-meta" id="progressMeta">--</div>
+        </div>
+        <div class="table-wrapper">
+            <table id="table"></table>
+        </div>
+    </div>
+    <script src="script.js">const timetable = [
+            ["DVAT", "IS", "Break", "NLP", "FCA", "Break", "BS", "NLP", "Break", "Free", "DM"],
+            ["CNAP", "FCA", "Break", "DVAT", "NLP", "Break", "IS", "BS", "Break", "BS", "DM"],
+            ["IS", "FCA", "Break", "DVAT", "FCA", "Break", "CNAP", "CNAP LAB / IS LAB", "Break", "CNAP LAB / IS LAB", "CNAP LAB / IS LAB"],
+            ["NLP", "FCA", "Break", "CNAP", "IS", "Break", "BS", "IS LAB / CNAP LAB", "Break", "IS LAB / CNAP LAB", "IS LAB / CNAP LAB"],
+            ["NLP", "DM", "Break", "NLP", "DVAT", "Break", "IS", "MINI PROJECT", "Break", "MINI PROJECT", "MINI PROJECT"],
+            ["DVAT", "CNAP", "Break", "BS", "DM", "Break", "Free", "GE", "Break", "Free", "CLUB"]
+        ];
+
+        const times = [
+            ["09:00", "09:50"],
+            ["09:50", "10:40"],
+            ["10:40", "10:55"],
+            ["10:55", "11:45"],
+            ["11:45", "12:35"],
+            ["12:35", "13:15"],
+            ["13:15", "14:05"],
+            ["14:05", "14:55"],
+            ["14:55", "15:10"],
+            ["15:10", "16:00"],
+            ["16:00", "16:50"]
+        ];
+
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        let boundaryTimer = null;
+        let tickTimer = null;
+        let cellMap = new Map();
+        let activeKey = null;
+        let lastScrollKey = null;
+        let selectedCell = null;
+
+        function toMin(t) {
+            const [h, m] = t.split(":").map(Number);
+            return h * 60 + m;
+        }
+
+        function nowMin() {
+            const d = new Date();
+            return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+        }
+
+        function formatClock(d = new Date()) {
+            const rawH = d.getHours();
+            const h12 = ((rawH + 11) % 12) + 1;
+            const m = d.getMinutes().toString().padStart(2, "0");
+            const ap = rawH >= 12 ? "PM" : "AM";
+            return `${h12}:${m} ${ap}`;
+        }
+
+        function formatRange(start, end) {
+            return `${formatTime12(start)} - ${formatTime12(end)}`;
+        }
+
+        function formatTime12(t) {
+            const [hStr, mStr] = t.split(":");
+            const h = Number(hStr);
+            const m = Number(mStr);
+            const h12 = ((h + 11) % 12) + 1;
+            const ap = h >= 12 ? "PM" : "AM";
+            return `${h12}:${m.toString().padStart(2, "0")} ${ap}`;
+        }
+
+        function durationText(start, end) {
+            const total = Math.round((toMin(end) - toMin(start)) * 60);
+            const minutes = Math.floor(total / 60);
+            return `${minutes}m`;
+        }
+
+        function periodProgress(start, end, now) {
+            const total = toMin(end) - toMin(start);
+            const elapsed = Math.min(Math.max(now - toMin(start), 0), total);
+            const percent = total > 0 ? (elapsed / total) * 100 : 0;
+            return { elapsed, total, percent };
+        }
+
+        function normalizeSlotLabel(slotIndex, value) {
+            const v = String(value || "").trim();
+            const isBreak = v.toLowerCase().includes("break");
+            if (!isBreak) return v;
+            if (slotIndex === 5) return "Lunch";
+            return "Break";
+        }
+
+        function isPauseLabel(v) {
+            const s = String(v || "").toLowerCase();
+            return s === "break" || s === "lunch";
+        }
+
+        function buildHeaderLabels() {
+            let p = 0;
+            return times.map((_, i) => {
+                const sample = normalizeSlotLabel(i, timetable[0][i]);
+                if (isPauseLabel(sample)) return sample;
+                p += 1;
+                return `${p}`;
+            });
+        }
+
+        function computeVerticalMergeSlots(normalized) {
+            const slots = new Set();
+            for (let s = 0; s < times.length; s++) {
+                const first = normalized[0][s];
+                if (!isPauseLabel(first)) continue;
+                let allSame = true;
+                for (let d = 1; d < normalized.length; d++) {
+                    if (normalized[d][s] !== first) {
+                        allSame = false;
+                        break;
+                    }
+                }
+                if (allSame) slots.add(s);
+            }
+            return slots;
+        }
+
+        function keyFor(dayIndex, slotIndex) {
+            return `${dayIndex}-${slotIndex}`;
+        }
+
+        function currentPeriodIndex() {
+            const n = nowMin();
+            for (let i = 0; i < times.length; i++) {
+                if (n >= toMin(times[i][0]) && n < toMin(times[i][1])) return i;
+            }
+            return -1;
+        }
+
+        function buildTable() {
+            const table = document.getElementById("table");
+            table.innerHTML = "";
+
+            cellMap = new Map();
+
+            const normalized = timetable.map(row => row.map((v, i) => normalizeSlotLabel(i, v)));
+            const headerLabels = buildHeaderLabels();
+            const verticalMergeSlots = computeVerticalMergeSlots(normalized);
+
+            const header = document.createElement("tr");
+            header.innerHTML = "<th>Day</th>" + times.map((_, i) => {
+                const top = headerLabels[i];
+                return `<th><div class="th-top">${top}</div></th>`;
+            }).join("");
+            table.appendChild(header);
+
+            normalized.forEach((row, dayIndex) => {
+                const tr = document.createElement("tr");
+                tr.dataset.day = String(dayIndex);
+                tr.innerHTML = `<th>${days[dayIndex]}</th>`;
+                table.appendChild(tr);
+
+                let s = 0;
+                while (s < row.length) {
+                    const label = row[s];
+
+                    if (dayIndex !== 0 && verticalMergeSlots.has(s)) {
+                        s += 1;
+                        continue;
+                    }
+
+                    let span = 1;
+                    while (s + span < row.length && row[s + span] === label && !verticalMergeSlots.has(s + span)) {
+                        span += 1;
+                    }
+
+                    const td = document.createElement("td");
+                    td.textContent = label;
+                    td.dataset.slot = String(s);
+                    td.dataset.span = String(span);
+                    td.classList.toggle("pause", isPauseLabel(label));
+
+                    if (span > 1) td.colSpan = span;
+                    if (dayIndex === 0 && verticalMergeSlots.has(s)) td.rowSpan = normalized.length;
+
+                    tr.appendChild(td);
+
+                    if (dayIndex === 0 && verticalMergeSlots.has(s)) {
+                        for (let d = 0; d < normalized.length; d++) {
+                            cellMap.set(keyFor(d, s), td);
+                        }
+                    } else {
+                        for (let k = 0; k < span; k++) {
+                            cellMap.set(keyFor(dayIndex, s + k), td);
+                        }
+                    }
+
+                    s += span;
+                }
+            });
+        }
+
+        function updateUI() {
+            const now = new Date();
+            const dayIndex = now.getDay() - 1;
+            const periodIndex = currentPeriodIndex();
+            const status = document.getElementById("status");
+            const clock = document.getElementById("clock");
+            const periodMeta = document.getElementById("periodMeta");
+            const progressFill = document.getElementById("progressFill");
+            const progressMeta = document.getElementById("progressMeta");
+
+            clock.textContent = formatClock(now);
+
+            if (dayIndex < 0 || dayIndex > 5 || periodIndex === -1) {
+                status.textContent = "No class now";
+                periodMeta.textContent = "--";
+                progressFill.style.width = "0%";
+                progressMeta.textContent = "Outside class hours";
+                if (activeKey) {
+                    const prev = cellMap.get(activeKey);
+                    if (prev) prev.classList.remove("active", "break");
+                    activeKey = null;
+                }
+                return;
+            }
+
+            const subject = normalizeSlotLabel(periodIndex, timetable[dayIndex][periodIndex]);
+            const isBreak = isPauseLabel(subject);
+            const [start, end] = times[periodIndex];
+            const nowMinutes = nowMin();
+            const { elapsed, total, percent } = periodProgress(start, end, nowMinutes);
+            const remaining = Math.max(total - elapsed, 0);
+            const remainingMin = Math.floor(remaining);
+
+            const k = keyFor(dayIndex, periodIndex);
+            const cell = cellMap.get(k);
+            if (k !== activeKey) {
+                if (activeKey) {
+                    const prev = cellMap.get(activeKey);
+                    if (prev) prev.classList.remove("active", "break");
+                }
+                if (cell) {
+                    cell.classList.add("active");
+                    cell.classList.toggle("break", isBreak);
+                }
+                activeKey = k;
+            } else {
+                if (cell) cell.classList.toggle("break", isBreak);
+            }
+
+            const todayRow = document.querySelector("tr.today");
+            if (todayRow) todayRow.classList.remove("today");
+            const row = document.querySelector(`tr[data-day="${dayIndex}"]`);
+            if (row) row.classList.add("today");
+
+            if (cell && lastScrollKey !== k) {
+                cell.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                lastScrollKey = k;
+            }
+
+            let periodNumber = 0;
+            for (let i = 0; i <= periodIndex; i++) {
+                const label = normalizeSlotLabel(i, timetable[dayIndex][i]);
+                if (!isPauseLabel(label)) periodNumber += 1;
+            }
+            const periodTag = isPauseLabel(subject) ? subject : `Hour ${periodNumber}`;
+
+            status.textContent = `${days[dayIndex]} - ${periodTag} - ${subject}`;
+            periodMeta.textContent = `${formatRange(start, end)} • ${durationText(start, end)}`;
+            progressFill.style.width = `${percent.toFixed(2)}%`;
+            const elapsedMin = Math.floor(elapsed);
+            const next = nextUp(dayIndex, periodIndex);
+            progressMeta.textContent = `${elapsedMin}m elapsed • ${remainingMin}m left${next ? ` • Next: ${next}` : ""}`;
+        }
+
+        function nextUp(dayIndex, currentSlot) {
+            for (let i = currentSlot + 1; i < times.length; i++) {
+                const label = normalizeSlotLabel(i, timetable[dayIndex][i]);
+                if (!label) continue;
+                return `${label} (${formatTime12(times[i][0])})`;
+            }
+            return null;
+        }
+
+        function scheduleNextBoundary() {
+            if (boundaryTimer) clearTimeout(boundaryTimer);
+
+            const n = nowMin();
+            let next = null;
+
+            for (let t of times) {
+                const end = toMin(t[1]);
+                if (end > n) {
+                    next = end;
+                    break;
+                }
+            }
+
+            if (next !== null) {
+                boundaryTimer = setTimeout(() => {
+                    updateUI();
+                    scheduleNextBoundary();
+                }, (next - n) * 60000);
+            }
+        }
+
+        function init() {
+            buildTable();
+            updateUI();
+            scheduleNextBoundary();
+            if (tickTimer) clearInterval(tickTimer);
+            tickTimer = setInterval(updateUI, 2000);
+
+            document.getElementById("table").addEventListener("click", event => {
+                const td = event.target.closest("td");
+                if (!td) return;
+
+                if (selectedCell && selectedCell !== td) selectedCell.classList.remove("selected");
+                td.classList.add("selected");
+                selectedCell = td;
+
+                const rect = td.getBoundingClientRect();
+                const ripple = document.createElement("span");
+                ripple.className = "ripple";
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = `${size}px`;
+                ripple.style.height = `${size}px`;
+                ripple.style.left = `${event.clientX - rect.left - size / 2}px`;
+                ripple.style.top = `${event.clientY - rect.top - size / 2}px`;
+                td.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 520);
+            });
+
+            initTheme();
+        }
+
+        function initTheme() {
+            const toggle = document.getElementById("themeToggle");
+            const stored = localStorage.getItem("theme");
+            const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            const initial = stored || (prefersDark ? "dark" : "light");
+            setTheme(initial, false);
+            toggle.addEventListener("click", () => {
+                const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+                setTheme(next, true);
+            });
+        }
+
+        function setTheme(theme, animate) {
+            if (animate) document.documentElement.classList.add("theme-anim");
+            document.documentElement.dataset.theme = theme;
+            localStorage.setItem("theme", theme);
+            if (animate) {
+                setTimeout(() => document.documentElement.classList.remove("theme-anim"), 420);
+            }
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                updateUI();
+                scheduleNextBoundary();
+            }
+        });
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>
